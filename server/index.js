@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const { ObjectID } = require('mongodb');
 
 const { mongoose } = require('./db/mongoose');
 const Todo = require('./models/todo');
@@ -23,6 +24,17 @@ app.get('/todos', (req, res) => {
     res.send({ todos: docs });  //returning all db results to the client
   }).
   catch( e => res.status(400).send(e));
+});
+
+app.get('/todos/:clientId', (req, res) => {
+  let id = req.params.clientId;
+  if (!ObjectID.isValid(id)) return res.status(404).send();
+  Todo.findById(id).
+    then( doc => {
+      if (!doc) return res.status(404).send();  //success, with no docs
+      res.send({ todo: doc });
+    }).
+    catch( e => res.status(400).send() );
 });
 
 app.listen(3000, () => console.log('Server runing on port 3000.'));
