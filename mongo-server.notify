@@ -1,2 +1,2 @@
-c:/Program Files/MongoDb/4.0/bin
+C:/Program Files/MongoDb/Server/4.0/bin
 cmd > mongod.exe --dbpath /Users/"samsung pc"/mongo-data
