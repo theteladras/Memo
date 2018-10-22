@@ -104,9 +104,50 @@ describe('Testing GET .../todos/:id', () => {
   });
 
   it('should return 404 for non object id', (done) => {
+    let hexID = 'qwerty';
+    request(app).
+      get(`/todos/${hexID}`).
+      expect(404).
+      end(done);
+  });
+});
+
+describe('testing DELETE .../todos/:id', () => {
+  it('should return the deleated object (todo)', (done) => {
+    let hexID = todos[0]._id.toHexString();
+    request(app).
+      delete(`/todos/${hexID}`).
+      expect(200).
+      expect( res => {
+        expect(res.body.todo._id).
+          toBe(hexID);
+      }).
+      end((err, res) => {
+        if (err) {
+          return done(err);
+        }
+        Todo.findById(hexID).
+          then( doc => {
+            expect(doc).toBeFalsy();
+            done();
+          }).
+          catch( e => done(e) );
+      });
+
+  });
+
+  it('should return 404 if object (todo) not found', (done) => {
     let hexID = new ObjectID().toHexString();
     request(app).
-      get('/todos/qwerty').
+      delete(`/todos/${hexID}`).
+      expect(404).
+      end(done);
+  });
+
+  it('should return 404 if objectID is invalid', (done) => {
+    let hexID = 'qwerty';
+    request(app).
+      delete(`/todos/${hexID}`).
       expect(404).
       end(done);
   });
