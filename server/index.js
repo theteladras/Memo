@@ -38,6 +38,17 @@ app.get('/todos/:clientId', (req, res) => {
     catch( e => res.status(400).send() );
 });
 
+app.delete('/todos/:clientId', (req, res) => {
+  let id = req.params.clientId;
+  if (!ObjectID.isValid(id)) return res.status(404).send();
+  Todo.findByIdAndRemove(id).
+    then( doc => {
+      if (!doc) return res.status(404).send();  //success, with no docs
+      res.send({ todo: doc });
+    }).
+    catch( e => res.status(400).send() );
+});
+
 app.listen(port, () => console.log(`Server runing on port ${port}.`));
 
 module.exports = { app };
