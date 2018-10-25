@@ -42,7 +42,7 @@ app.get('/todos/:clientId', (req, res) => {
 app.delete('/todos/:clientId', (req, res) => {
   let id = req.params.clientId;
   if (!ObjectID.isValid(id)) return res.status(404).send();
-  Todo.findByIdAndRemove(id).
+  Todo.findOneAndRemove({_id: id}).
     then( doc => {
       if (!doc) return res.status(404).send();  //success, with no docs
       res.send({ todo: doc });
@@ -66,7 +66,7 @@ app.patch('/todos/:clientId', (req, res) => {
       if (!doc) return res.status(404).send();
       res.send({todo: doc});
     }).
-    catch( e => {console.log(e); res.status(400).send()} )
+    catch( e => {console.log(e); res.status(400).send()} );
 });
 
 app.listen(port, () => console.log(`Server runing on port ${port}.`));
