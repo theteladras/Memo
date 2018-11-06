@@ -4,7 +4,7 @@ if (env === 'development') {
   process.env.PORT = 3000;
   process.env.dbURL = 'mongodb://localhost:27017/ToDo';
 }
-else if (env === 'test') {
+else if (process.env.NODE_ENV === 'test') {
   process.env.PORT = 3000;
   process.env.dbURL = 'mongodb://localhost:27017/ToDoTest';
 }

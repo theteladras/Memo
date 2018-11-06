@@ -4,37 +4,16 @@ const { ObjectID } = require('mongodb');
 
 const { app } = require('../index');
 const Todo = require('../models/todo');
+const { todos, populateToDos, users, populateUsers } = require('./seed');
 
-const todos = [
-  {
-    _id: new ObjectID(),
-    text: 'blabla bla'
-  },
-  {
-    _id: new ObjectID(),
-    text: 'haha ha'
-  },
-  {
-    _id: new ObjectID(),
-    text: 'yo yoyo',
-    completed: true,
-    completedAt: 123
-  }
-];  //dummy docsuments
 
-beforeEach((done) => {
-  //Todo.remove({}).then(() => done()); //remove all documents from db and finish up the setup
-  Todo.remove({}).
-    then(() => {
-      return Todo.insertMany(todos);
-    }).
-    then( () => done() );
-}); // remove all documents from db add dummy documents and finish setup
+beforeEach(populateUsers); // remove all documents from db to then add dummy documents and finish setup -> users
+beforeEach(populateToDos); // remove all documents from db to then add dummy documents and finish setup -> todos
 
 describe('POST /todos', () => {
+
   it('creating a new todo', (done) => {
     let text = 'Test todo text';
-
     request(app).
       post('/todos').
       send({ text }).
@@ -48,11 +27,12 @@ describe('POST /todos', () => {
         }
         Todo.find({ text }).
           then( docs => {
+            console.log('I\'m fucking here');
             expect(docs.length).toBe(1);
             expect(docs[0].text).toBe(text);
-            done();
           }).
-          catch( e => done(e) );
+          catch( e => console.log );
+          return done();
       });
   });
 
@@ -61,17 +41,7 @@ describe('POST /todos', () => {
       post('/todos').
       send({}).
       expect(400).
-      end((e, res) => {
-        if(e) {
-          return done(e);
-        }
-        Todo.find().
-          then( docs => {
-            expect(docs.length).toBe(3);
-            done();
-          }).
-          catch( e => done(e) );
-      });
+      end(done);
   });
 
 });
