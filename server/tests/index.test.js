@@ -155,3 +155,64 @@ describe(':Testing PATCH .../todos/:id', () => {
       end(done);
   });
 });
+
+describe(':Testing GET .../users/me', () => {
+  it('should get user info if the user is authenticated', (done) => {
+    request(app).
+      get('/users/me').
+      set('x-auth', users[0].tokens[0].token).
+      expect(200).
+      expect(res => {
+        expect(res.body._id).toBe(users[0]._id.toHexString());
+        expect(res.body.email).toBe(users[0].email);
+      }).
+      end(done);
+  });
+
+  it('should send a 401 error if not authenticated', (done) => {
+    request(app).
+      get('/users/me').
+      expect(401).
+      expect(res => {
+        expect(res.body).toEqual({});
+      }).
+      end(done);
+  });
+});
+
+describe(':Testing POST .../users', () => {
+  it('should create a authanticated user', (done) => {
+    let email = 'admin@admin.com';
+    let password = 'abCaBc?';
+    request(app).
+      post('/users').
+      send({ email, password }).
+      expect(200).
+      expect(res => {
+        expect(res.headers['x-auth']).toBeTruthy();
+        expect(res.body.email).toBe(email);
+        expect(res.body._id).toBeTruthy();
+      }).
+      end(done);
+  });
+
+  it('should not create user for existing email', (done) => {
+    let email = users[0].email;
+    let password = 'abcabc123!';
+    request(app).
+      post('/users').
+      send({ email, password }).
+      expect(400).
+      end(done);
+  });
+
+  it('should send back an error if invalid entries', (done) => {
+    let email = 'admin.com';
+    let password = 'abc';
+    request(app).
+      post('/users').
+      send({ email, password }).
+      expect(400).
+      end(done);
+  });
+});
