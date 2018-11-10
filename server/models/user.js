@@ -33,17 +33,6 @@ let UserSchema = new mongoose.Schema({
   }]
 });
 
-UserSchema.methods.generateAuthToken = function() {
-  let user = this;
-  let access = 'auth';
-  let token = jwt.sign({ _id: user._id.toHexString(), access }, 'abcabc').toString();
-  user.tokens = user.tokens.concat([{ access, token }]);
-  return user.save().
-    then(() => {
-      return token;
-    });
-};
-
 UserSchema.pre('save', function(next) {
   if (this.isModified('password')) {
     bcr.genSalt(11, (e, salt) => {
@@ -58,6 +47,27 @@ UserSchema.pre('save', function(next) {
   }
 });
 
+UserSchema.methods.generateAuthToken = function() {
+  let user = this;
+  let access = 'auth';
+  let token = jwt.sign({ _id: user._id.toHexString(), access }, 'abcabc').toString();
+  user.tokens = user.tokens.concat([{ access, token }]);
+  return user.save().
+    then(() => {
+      return token;
+    });
+};
+
+UserSchema.methods.removeToken = function(token) {
+  return this.update({
+    $pull: {
+      tokens: {
+        token
+      }
+    }
+  });
+};
+
 UserSchema.statics.findByToken = function(token) {
   let User = this;
   let decoded;
@@ -68,6 +78,20 @@ UserSchema.statics.findByToken = function(token) {
     return Promise.reject();
   }
   return User.findOne({ _id: decoded._id, 'tokens.token': token, 'tokens.access': 'auth' });
+};
+
+UserSchema.statics.findUser = function(email, password) {
+  let User = this;
+  return User.findOne({ email }).
+    then(user => {
+      if (!user) return Promis.reject();
+      return new Promise((resolve, reject) => {
+        bcr.compare(password, user.password, (e, res) => {
+          if (res) resolve(user);
+          else reject();
+        });
+      })
+    });
 };
 
 UserSchema.methods.toJSON = function() {

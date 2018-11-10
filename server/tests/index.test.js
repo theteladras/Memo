@@ -4,6 +4,7 @@ const { ObjectID } = require('mongodb');
 
 const { app } = require('../index');
 const Todo = require('../models/todo');
+const User = require('../models/user');
 const { todos, populateToDos, users, populateUsers } = require('./seed');
 
 
@@ -212,6 +213,56 @@ describe(':Testing POST .../users', () => {
     request(app).
       post('/users').
       send({ email, password }).
+      expect(400).
+      end(done);
+  });
+});
+
+describe(':Testing POST .../users/login', () => {
+  it('should login user and return auth token', (done) =>{
+    request(app).
+      post('/users/login').
+      send({
+        email: users[1].email,
+        password: users[1].password
+      }).
+      expect(200).
+      expect(res => {
+        expect(res.headers['x-auth']).toBeTruthy();
+      }).
+      end((e, res) => {
+        if (e) {
+          return done(e);
+        }
+        User.findById(users[1]._id).then(user => {
+          expect(user.tokens[0]).toMatchObject({
+            access: 'auth',
+            token: res.header['x-auth']
+          });
+          done();
+        }).
+        catch(e => done(e));
+      });
+  });
+
+  it('should denie login of user for false email', (done) =>{
+    request(app).
+      post('/users/login').
+      send({
+        email: 'adg@adg.com',
+        password: users[1].password
+      }).
+      expect(400).
+      end(done);
+  });
+
+  it('should denie login of user for false password', (done) =>{
+    request(app).
+      post('/users/login').
+      send({
+        email: users[1].email,
+        password: 'aaaddd'
+      }).
       expect(400).
       end(done);
   });
