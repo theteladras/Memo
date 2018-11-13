@@ -4,20 +4,27 @@ const jwt = require('jsonwebtoken');
 const Todo = require('../models/todo');
 const User = require('../models/user');
 
+const firstUserID = new ObjectID();
+const secondUserID = new ObjectID();
+const thirdUserID = new ObjectID();
+
 const todos = [
   {
     _id: new ObjectID(),
-    text: 'blabla bla'
+    text: 'blabla bla',
+    _owner: firstUserID
   },
   {
     _id: new ObjectID(),
-    text: 'haha ha'
+    text: 'haha ha',
+    _owner: secondUserID
   },
   {
     _id: new ObjectID(),
     text: 'yo yoyo',
     completed: true,
-    completedAt: 123
+    completedAt: 123,
+    _owner: thirdUserID
   }
 ];  //dummy docsuments
 
@@ -31,8 +38,6 @@ populateToDos = (done) => {
     catch(e => done(e));
 };
 
-const firstUserID = new ObjectID();
-const secondUserID = new ObjectID();
 const users = [{
   _id: firstUserID,
   email: 'user-one@user.com',
@@ -42,12 +47,30 @@ const users = [{
     token: jwt.sign({
       _id: firstUserID,
       access: 'auth'
-    }, 'abcabc').toString()
+    }, process.env.secret).toString()
   }]
 }, {
   _id: secondUserID,
   email: 'user-two@user.com',
-  password: 'abCaBc!2'
+  password: 'abCaBc!2',
+  tokens: [{
+    access: 'auth',
+    token: jwt.sign({
+      _id: secondUserID,
+      access: 'auth'
+    }, process.env.secret).toString()
+  }]
+}, {
+  _id: thirdUserID,
+  email: 'user-three@user.com',
+  password: 'abCaBc!3',
+  tokens: [{
+    access: 'auth',
+    token: jwt.sign({
+      _id: thirdUserID,
+      access: 'auth'
+    }, process.env.secret).toString()
+  }]
 }];
 
 populateUsers = (done) => {
@@ -56,6 +79,7 @@ populateUsers = (done) => {
     then(() => {
       let userOne = new User(users[0]).save();
       let userTwo = new User(users[1]).save();
+      let userThree = new User(users[2]).save();
 
       return Promise.all([userOne, userTwo]);
       return User.insertMany(todos);

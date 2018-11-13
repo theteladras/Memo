@@ -17,6 +17,7 @@ describe('POST /todos', () => {
     let text = 'Test todo text';
     request(app).
       post('/todos').
+      set('x-auth', users[0].tokens[0].token).
       send({ text }).
       expect(200).
       expect( res => {
@@ -28,7 +29,6 @@ describe('POST /todos', () => {
         }
         Todo.find({ text }).
           then( docs => {
-            console.log('I\'m fucking here');
             expect(docs.length).toBe(1);
             expect(docs[0].text).toBe(text);
           }).
@@ -40,6 +40,7 @@ describe('POST /todos', () => {
   it('should prevent save on body fail', (done) => {
     request(app).
       post('/todos').
+      set('x-auth', users[0].tokens[0].token).
       send({}).
       expect(400).
       end(done);
@@ -51,16 +52,18 @@ describe(':Testing GET .../todos', () => {
   it('get list items', (done) => {
     request(app).
       get('/todos').
+      set('x-auth', users[0].tokens[0].token).
       expect(200).
-      expect( res => expect(res.body.todos.length).toBe(3) ).
+      expect( res => expect(res.body.todos.length).toBe(1) ).
       end(done);
   });
 });
 
 describe(':Testing GET .../todos/:id', () => {
-  it('should return documents', (done) => {
+  it('should return document from owner', (done) => {
     request(app).
       get(`/todos/${todos[0]._id.toHexString()}`).
+      set('x-auth', users[0].tokens[0].token).
       expect(200).
       expect((res) => {
         expect(res.body.todo.text).toBe(todos[0].text);
@@ -68,10 +71,19 @@ describe(':Testing GET .../todos/:id', () => {
       end(done);
   });
 
+  it('should not return document that is not owned', (done) => {
+    request(app).
+      get(`/todos/${todos[1]._id.toHexString()}`).
+      set('x-auth', users[0].tokens[0].token).
+      expect(404).
+      end(done);
+  });
+
   it('should return 404 for non existing todo', (done) => {
     let hexID = new ObjectID().toHexString();
     request(app).
       get(`/todos/${hexID}`).
+      set('x-auth', users[0].tokens[0].token).
       expect(404).
       end(done);
   });
@@ -80,16 +92,18 @@ describe(':Testing GET .../todos/:id', () => {
     let hexID = 'qwerty';
     request(app).
       get(`/todos/${hexID}`).
+      set('x-auth', users[0].tokens[0].token).
       expect(404).
       end(done);
   });
 });
 
 describe(':Testing DELETE .../todos/:id', () => {
-  it('should return the deleated object (todo)', (done) => {
-    let hexID = todos[0]._id.toHexString();
+  it('should return the deleated object (todo), that is owned by the user', (done) => {
+    let hexID = todos[2]._id.toHexString();
     request(app).
       delete(`/todos/${hexID}`).
+      set('x-auth', users[2].tokens[0].token).
       expect(200).
       expect( res => {
         expect(res.body.todo._id).
@@ -106,13 +120,32 @@ describe(':Testing DELETE .../todos/:id', () => {
           }).
           catch( e => done(e) );
       });
+  });
 
+  it('should not deleated object (todo) from another user', (done) => {
+    let hexID = todos[2]._id.toHexString();
+    request(app).
+      delete(`/todos/${hexID}`).
+      set('x-auth', users[1].tokens[0].token).
+      expect(404).
+      end((err, res) => {
+        if (err) {
+          return done(err);
+        }
+        Todo.findById(hexID).
+          then( doc => {
+            expect(doc).toBeTruthy();
+            done();
+          }).
+          catch(e => done(e));
+      });
   });
 
   it('should return 404 if object (todo) not found', (done) => {
     let hexID = new ObjectID().toHexString();
     request(app).
       delete(`/todos/${hexID}`).
+      set('x-auth', users[2].tokens[0].token).
       expect(404).
       end(done);
   });
@@ -121,17 +154,19 @@ describe(':Testing DELETE .../todos/:id', () => {
     let hexID = 'qwerty';
     request(app).
       delete(`/todos/${hexID}`).
+      set('x-auth', users[2].tokens[0].token).
       expect(404).
       end(done);
   });
 });
 
 describe(':Testing PATCH .../todos/:id', () => {
-  it('should update object (todo) and assign it a completedAt date', (done) => {
-    let hexID = todos[0]._id.toHexString();
+  it('should update object (todo) and assign it a completedAt date that is owned by the user', (done) => {
+    let hexID = todos[2]._id.toHexString();
     let text = 'Test update...first';
     request(app).
       patch(`/todos/${hexID}`).
+      set('x-auth', users[2].tokens[0].token).
       send({text, completed: true}).
       expect(200).
       expect( res => {
@@ -141,11 +176,24 @@ describe(':Testing PATCH .../todos/:id', () => {
       }).
       end(done);
   });
+
+  it('should not update object (todo) from another user', (done) => {
+    let hexID = todos[1]._id.toHexString();
+    let text = 'Test update...first';
+    request(app).
+      patch(`/todos/${hexID}`).
+      set('x-auth', users[2].tokens[0].token).
+      send({text, completed: true}).
+      expect(404).
+      end(done);
+  });
+
   it('should clear completedAt, if not complete', (done) => {
     let hexID = todos[2]._id.toHexString();
     let text = 'Test update...second';
     request(app).
       patch(`/todos/${hexID}`).
+      set('x-auth', users[2].tokens[0].token).
       send({text, completed: false}).
       expect(200).
       expect( res => {
@@ -235,7 +283,7 @@ describe(':Testing POST .../users/login', () => {
           return done(e);
         }
         User.findById(users[1]._id).then(user => {
-          expect(user.tokens[0]).toMatchObject({
+          expect(user.tokens[1]).toMatchObject({
             access: 'auth',
             token: res.header['x-auth']
           });
@@ -265,5 +313,23 @@ describe(':Testing POST .../users/login', () => {
       }).
       expect(400).
       end(done);
+  });
+});
+
+describe(':DELETE .../users/me/token', () => {
+  it('delete auth token (logout)', (done) => {
+    request(app).
+      delete('/users/me/token').
+      set('x-auth', users[0].tokens[0].token).
+      expect(200).
+      end((e, res) => {
+        if(e) return done(e);
+        User.findById(users[0]._id).
+          then(user => {
+            expect(user.tokens.length).toBe(0);
+            return done();
+          }).
+          catch(e => done(e));
+      });
   });
 });

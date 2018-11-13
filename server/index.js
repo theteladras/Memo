@@ -56,26 +56,30 @@ app.delete('/users/me/token', auth, (req, res) => {
     });
 });
 
-app.post('/todos', (req, res) => {
+app.post('/todos', auth, (req, res) => {
   let todo = new Todo({
-    text: req.body.text
+    text: req.body.text,
+    _owner: req.user._id
   });
   todo.save().then((document) => {
     res.send(document);  //returning the saved body to the client
   }, e => res.status(400).send(e));
 });
 
-app.get('/todos', (req, res) => {
-  Todo.find().then( docs => {
+app.get('/todos', auth, (req, res) => {
+  Todo.find({ _owner: req.user._id }).then( docs => {
     res.send({ todos: docs });  //returning all db results to the client
   }).
   catch( e => res.status(400).send(e));
 });
 
-app.get('/todos/:clientId', (req, res) => {
+app.get('/todos/:clientId', auth, (req, res) => {
   let id = req.params.clientId;
   if (!ObjectID.isValid(id)) return res.status(404).send();
-  Todo.findById(id).
+  Todo.findOne({
+    _id: id,
+    _owner: req.user._id
+  }).
     then( doc => {
       if (!doc) return res.status(404).send();  //success, with no docs
       res.send({ todo: doc });
@@ -83,19 +87,22 @@ app.get('/todos/:clientId', (req, res) => {
     catch( e => res.status(400).send() );
 });
 
-app.delete('/todos/:clientId', (req, res) => {
-  let id = req.params.clientId;
+app.delete('/todos/:todoId', auth, (req, res) => {
+  let id = req.params.todoId;
   if (!ObjectID.isValid(id)) return res.status(404).send();
-  Todo.findOneAndRemove({_id: id}).
+  Todo.findOneAndRemove({
+    _id: id,
+    _owner: req.user._id
+  }).
     then( doc => {
-      if (!doc) return res.status(404).send();  //success, with no docs
+      if (!doc) return res.status(404).send();  //false success, with no docs
       res.send({ todo: doc });
     }).
-    catch( e => res.status(400).send() );
+    catch( e => res.status(400).send() ); // connection with database failed
 });
 
-app.patch('/todos/:clientId', (req, res) => {
-  let id = req.params.clientId;
+app.patch('/todos/:todoId', auth, (req, res) => {
+  let id = req.params.todoId;
   if (!ObjectID.isValid(id)) return res.status(404).send();
   let body = _.pick(req.body, ['text', 'completed']);
   if (_.isBoolean(body.completed) && body.completed) {
@@ -105,7 +112,7 @@ app.patch('/todos/:clientId', (req, res) => {
     body.completed = false;
     body.completedAt = null;
   }
-  Todo.findByIdAndUpdate(id, {$set: body}, {new: true}).
+  Todo.findOneAndUpdate({ _id: id, _owner: req.user._id }, {$set: body}, {new: true}).
     then( doc => {
       if (!doc) return res.status(404).send();
       res.send({todo: doc});

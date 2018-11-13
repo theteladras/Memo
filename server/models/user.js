@@ -50,7 +50,7 @@ UserSchema.pre('save', function(next) {
 UserSchema.methods.generateAuthToken = function() {
   let user = this;
   let access = 'auth';
-  let token = jwt.sign({ _id: user._id.toHexString(), access }, 'abcabc').toString();
+  let token = jwt.sign({ _id: user._id.toHexString(), access }, process.env.secret).toString();
   user.tokens = user.tokens.concat([{ access, token }]);
   return user.save().
     then(() => {
@@ -71,8 +71,9 @@ UserSchema.methods.removeToken = function(token) {
 UserSchema.statics.findByToken = function(token) {
   let User = this;
   let decoded;
+  let salt = process.env.secret;
   try {
-    decoded = jwt.verify(token, 'abcabc');
+    decoded = jwt.verify(token, salt);
   }
   catch (e) {
     return Promise.reject();

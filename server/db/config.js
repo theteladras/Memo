@@ -1,10 +1,10 @@
 // creating two separate databases, for dev and test
 let env = process.env.NODE_ENV || 'development';
-if (env === 'development') {
-  process.env.PORT = 3000;
-  process.env.dbURL = 'mongodb://localhost:27017/ToDo';
-}
-else if (process.env.NODE_ENV === 'test') {
-  process.env.PORT = 3000;
-  process.env.dbURL = 'mongodb://localhost:27017/ToDoTest';
+
+if (env === 'development' || env === 'test') {
+  let configuration = require('./config.json');
+  let envConfiguration = configuration[env]; // grab config for chosen environment -> development / test
+  Object.keys(envConfiguration).forEach(key => {
+    process.env[key] = envConfiguration[key];
+  });
 }
